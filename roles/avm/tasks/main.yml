@@ -1,0 +1,84 @@
+---
+- name: Install required packages
+  ansible.builtin.package:
+    name:
+      - unzip
+      - curl
+      - jq
+    state: present
+    update_cache: yes
+
+- name: Create AVM directory
+  ansible.builtin.file:
+    path: "{{ avm_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Check current AVM version
+  ansible.builtin.command: "{{ avm_dir }}/avm -version"
+  register: current_avm_version
+  changed_when: false
+  failed_when: false
+  ignore_errors: true
+
+- name: Debug current version
+  ansible.builtin.debug:
+    msg: "Current version output: {{ current_avm_version.stdout | default('Not installed') }}"
+
+- name: Install/Update AVM
+  block:
+    - name: Get GitHub release details using the API
+      ansible.builtin.uri:
+        # If release_tag is 'latest', use 'latest'; otherwise 'tags/{{ release_tag }}' if it's not a tag name directly.
+        # User provided 'v0.1.1-3' as part of the path, let's assume it's a tag.
+        url: "https://api.github.com/repos/{{ github_owner }}/{{ github_repo }}/releases/{{ release_tag }}"
+        return_content: true
+        headers:
+          Accept: "application/vnd.github.v3+json"
+          Authorization: "token {{ github_token | replace('https://', '') }}"
+        status_code: 200
+        validate_certs: true
+      register: gh_release_details
+
+    - name: Extract the specific artifact download URL
+      ansible.builtin.set_fact:
+        artifact_url: "{{ gh_release_details.json.assets | selectattr('name', 'equalto', artifact_name) | map(attribute='url') | first }}"
+
+    - name: Download the artifact file
+      ansible.builtin.get_url:
+        url: "{{ artifact_url }}"
+        dest: /tmp/avm.zip
+        owner: root
+        group: root
+        mode: '0755'
+        headers:
+          Accept: "application/octet-stream"
+          Authorization: "token {{ github_token | replace('https://', '') }}"
+        force: yes
+
+    - name: Extract AVM
+      ansible.builtin.unarchive:
+        src: /tmp/avm.zip
+        dest: "{{ avm_dir }}"
+        remote_src: yes
+        extra_opts:
+          - "-o"
+  when: >
+    current_avm_version.rc != 0 or 
+    avm_version not in current_avm_version.stdout
+
+- name: Configure AVM service
+  ansible.builtin.template:
+    src: avm.service.j2
+    dest: /etc/systemd/system/avm.service
+    mode: '0644'
+  notify: Restart AVM
+
+- name: Enable and start AVM service
+  ansible.builtin.systemd:
+    name: avm
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+

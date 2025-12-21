@@ -1,0 +1,93 @@
+---
+- name: Install dependencies
+  ansible.builtin.package:
+    name: unzip
+    state: present
+
+- name: Check if kvmd-nginx service exists
+  ansible.builtin.service_facts:
+
+- name: Set target version variables (Mini)
+  ansible.builtin.set_fact:
+    target_version: "{{ web_mini_version }}"
+    target_zip: "web-mini-{{ web_mini_version }}.zip"
+  when: model | default('opi') == 'opi'
+
+- name: Set target version variables (Max)
+  ansible.builtin.set_fact:
+    target_version: "{{ web_max_version }}"
+    target_zip: "web-max-{{ web_max_version }}.zip"
+  when: model | default('rpi') == 'rpi'
+
+- name: Check current installed version
+  ansible.builtin.slurp:
+    src: /usr/share/kvmd/web/version
+  register: current_version_b64
+  ignore_errors: true
+
+- name: Decode current version
+  ansible.builtin.set_fact:
+    current_version: "{{ current_version_b64.content | b64decode | trim }}"
+  when: current_version_b64.content is defined
+
+- name: Configure KVM service
+  ansible.builtin.template:
+    src: kvmd-nginx.service.j2
+    dest: /lib/systemd/system/kvmd-nginx.service
+    mode: '0644'
+  notify: Restart KVM
+
+- name: Update KVM Web Interface
+  block:
+    - name: Stop kvmd-nginx service
+      ansible.builtin.systemd:
+        name: kvmd-nginx
+        state: stopped
+      when: "'kvmd-nginx.service' in services and services['kvmd-nginx.service'].state == 'running'"
+
+    - name: Get timestamp for backup
+      ansible.builtin.command: date +%Y%m%d%H%M%S
+      register: timestamp
+      changed_when: false
+
+    - name: Check if web folder exists for backup
+      ansible.builtin.stat:
+        path: /usr/share/kvmd/web
+      register: web_folder
+
+    - name: Backup existing web folder
+      ansible.builtin.command:
+        cmd: "mv /usr/share/kvmd/web /usr/share/kvmd/web_{{ timestamp.stdout }}"
+      when: web_folder.stat.exists and web_folder.stat.isdir
+
+    - name: Ensure KVM directory exists
+      ansible.builtin.file:
+        path: /usr/share/kvmd
+        state: directory
+        mode: '0755'
+
+    - name: Ensure local files directory exists on controller
+      ansible.builtin.file:
+        path: "{{ role_path }}/files"
+        state: directory
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Extract target web zip to KVM directory
+      ansible.builtin.unarchive:
+        src: "{{ role_path }}/files/{{ target_zip }}"
+        dest: /usr/share/kvmd/
+        remote_src: no
+        extra_opts:
+          - "-o"
+
+    - name: Enable and start kvmd-nginx service
+      ansible.builtin.systemd:
+        name: kvmd-nginx
+        state: started
+        enabled: yes
+      ignore_errors: true
+
+  when: (current_version | default('none')) != target_version
+

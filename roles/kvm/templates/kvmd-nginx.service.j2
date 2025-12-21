@@ -1,0 +1,20 @@
+[Unit]
+Description=AVM - HTTP entrypoint
+After=network.target network-online.target nss-lookup.target kvmd.service
+
+[Service]
+Type=forking
+PIDFile=/run/kvmd/nginx.pid
+PrivateDevices=yes
+SyslogLevel=err
+Restart=always
+RestartSec=3
+ExecStartPre=/bin/bash -c 'if [ -f /sys/class/sunxi_info/sys_info ]; then ID=$(cat /sys/class/sunxi_info/sys_info | grep chipid | cut -d: -f2 | tr -d " \n"); [ "$ID" = "{{ serial }}" ]; else RPI=$(cat /proc/cpuinfo | grep Serial | cut -d: -f2 | tr -d " \n"); [ "$RPI" = "{{ serial }}" ]; fi'
+ExecStart=/usr/sbin/nginx -p /etc/kvmd/nginx -c /etc/kvmd/nginx/nginx.conf -g 'pid /run/kvmd/nginx.pid; user kvmd-nginx; error_log stderr;'
+ExecReload=/usr/sbin/nginx -s reload -p /etc/kvmd/nginx -c /etc/kvmd/nginx/nginx.conf -g 'pid /run/kvmd/nginx.pid; user kvmd-nginx; error_log stderr;'
+KillSignal=SIGQUIT
+KillMode=mixed
+TimeoutStopSec=3
+
+[Install]
+WantedBy=multi-user.target

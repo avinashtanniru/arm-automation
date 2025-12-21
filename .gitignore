@@ -1,0 +1,6 @@
+.venv/
+*.pyc
+__pycache__/
+*.retry
+.DS_Store
+.vault_pass

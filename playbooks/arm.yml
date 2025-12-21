@@ -1,0 +1,15 @@
+---
+- name: ARM Automation Playbook
+  hosts: all
+  become: yes
+  gather_facts: false
+  tasks:
+    - name: Gather only the os_family fact
+      ansible.builtin.setup:
+        gather_subset:
+          - os_family
+          - '!all' # This ensures only the specified subset is gathered
+    - name: Run dynamic roles
+      include_role:
+        name: "{{ item }}"
+      loop: "{{ roles | default([]) }}"

@@ -1,0 +1,89 @@
+---
+# --- Debian/Ubuntu/Raspbian ---
+- name: Install dependencies (Debian)
+  ansible.builtin.package:
+    name:
+      - curl
+      - gpg
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Add Tailscale GPG key (Debian)
+  ansible.builtin.get_url:
+    url: "https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }}/{{ ansible_distribution_release }}.noarmor.gpg"
+    dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+    mode: '0644'
+  when: ansible_os_family == "Debian"
+
+- name: Add Tailscale repository (Debian)
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} main"
+    filename: tailscale
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Update apt cache and install Tailscale (Debian)
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+# --- Arch Linux ---
+- name: Install Tailscale (Arch)
+  community.general.pacman:
+    name: tailscale
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Archlinux"
+
+# --- Service Management ---
+- name: Enable and start Tailscaled
+  ansible.builtin.systemd:
+    name: tailscaled
+    state: started
+    enabled: yes
+
+# --- Configuration ---
+- name: Configure sysctl for Tailscale routing
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-tailscale.conf
+    content: |
+      net.ipv4.ip_forward = 1
+      net.ipv6.conf.all.forwarding = 1
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Apply sysctl settings
+  ansible.builtin.command:
+    cmd: sysctl -p /etc/sysctl.d/99-tailscale.conf
+  changed_when: false
+
+- name: Configure Tailscale to advertise exit node
+  ansible.builtin.command:
+    cmd: tailscale set --advertise-exit-node
+  changed_when: false
+
+- name: Check current Tailscale status
+  ansible.builtin.command: tailscale status --json
+  register: tailscale_status_json
+  ignore_errors: true # In case tailscale is not installed or the daemon isn't running
+  changed_when: false # This task only gathers info, doesn't change state
+
+- name: Parse Tailscale status to check backend state
+  ansible.builtin.set_fact:
+    ts_backend_state: "{{ (tailscale_status_json.stdout | from_json)['BackendState'] }}"
+  # Only run this if the previous command was successful
+  when: tailscale_status_json.rc == 0
+
+- name: Run 'tailscale up' with auth key if not connected/running
+  ansible.builtin.command: >
+    tailscale up --auth-key={{ ts_auth_key }} --hostname={{ hostname }} --advertise-exit-node --accept-routes
+  # Use the 'when' condition to check if the state is not 'Running'
+  when: ts_backend_state | default('Stopped') != 'Running'
+  register: tailscale_up_result
+  # Use "no_log: true" to prevent sensitive auth key from appearing in logs
+  # no_log: true
+  # This task changes the system state, so it should report changes
+  changed_when: tailscale_up_result.rc == 0

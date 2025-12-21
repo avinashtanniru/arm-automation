@@ -1,0 +1,5 @@
+---
+- name: Restart AVM
+  ansible.builtin.systemd:
+    name: avm
+    state: restarted

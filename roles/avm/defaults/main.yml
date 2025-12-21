@@ -1,0 +1,9 @@
+avm_version: "v0.1.1"
+avm_dir: "/usr/share/avm"
+avm_port: "8080"
+avm_user: "root"
+github_token: ""
+github_owner: "avinashtanniru"
+github_repo: "arm-ui"
+release_tag: "tags/v0.1.1" # Using tag ref or 'latest'
+artifact_name: "avm-v0.1.1.zip"

@@ -1,0 +1,5 @@
+---
+- name: Restart KVM
+  ansible.builtin.systemd:
+    name: kvmd-nginx
+    state: restarted

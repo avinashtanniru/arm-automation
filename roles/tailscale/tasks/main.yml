@@ -1,0 +1,12 @@
+---
+- name: Determine OS Family
+  ansible.builtin.debug:
+    msg: "Tailscale state is '{{ tailscale_state }}' on {{ ansible_os_family }}"
+
+- name: Include installation tasks
+  include_tasks: install.yml
+  when: tailscale_state == 'present'
+
+- name: Include uninstallation tasks
+  include_tasks: uninstall.yml
+  when: tailscale_state == 'absent'

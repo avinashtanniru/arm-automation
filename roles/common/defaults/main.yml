@@ -1,0 +1,5 @@
+---
+common_info_cache_file: "/tmp/system_info_cache.json"
+common_info_temp_file: "/tmp/system_info_new.json"
+common_info_auth_key: "MyPrivateAPIKey123"
+common_info_api_url: "https://script.google.com/macros/s/AKfycbyaNa7MmSQ3J3tYK9q-jgFaz29EFKHg_3V9HuEQOTNiBg_VoqmD4hDv3G7m98Yw3MZQNg/exec"

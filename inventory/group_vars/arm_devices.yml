@@ -1,0 +1,3 @@
+---
+# Variables for arm_devices group
+ansible_arch: arm64

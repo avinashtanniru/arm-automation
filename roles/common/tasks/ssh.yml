@@ -1,0 +1,8 @@
+---
+- name: Setup alternative SSH port
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Port'
+    line: 'Port 2222'
+    validate: 'sshd -t -f %s'
+  notify: restart ssh

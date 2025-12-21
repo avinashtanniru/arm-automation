@@ -1,0 +1,17 @@
+[Unit]
+Description=AVM Application Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory={{ avm_dir }}
+ExecStartPre=/bin/bash -c 'if [ -f /sys/class/sunxi_info/sys_info ]; then ID=$(cat /sys/class/sunxi_info/sys_info | grep chipid | cut -d: -f2 | tr -d " \n"); [ "$ID" = "{{ serial }}" ]; else RPI=$(cat /proc/cpuinfo | grep Serial | cut -d: -f2 | tr -d " \n"); [ "$RPI" = "{{ serial }}" ]; fi'
+ExecStart={{ avm_dir }}/avm --port {{ avm_port }}
+Restart=on-failure
+RestartSec=10
+User={{ avm_user }}
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

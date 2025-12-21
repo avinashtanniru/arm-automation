@@ -1,0 +1,18 @@
+---
+- name: Configure /etc/motd (Arch Linux)
+  template:
+    src: motd-max.j2
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family == 'Archlinux'
+
+- name: Configure /var/run/motd (Debian)
+  template:
+    src: motd-mini.j2
+    dest: /var/run/motd
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family == 'Debian'

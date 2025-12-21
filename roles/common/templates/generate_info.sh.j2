@@ -1,0 +1,98 @@
+#!/bin/bash
+
+# Configuration
+CACHE_FILE="{{ common_info_cache_file }}"
+TEMP_FILE="{{ common_info_temp_file }}"
+AUTH_KEY="{{ common_info_auth_key }}"
+API_URL="{{ common_info_api_url }}"
+
+# --- 1. Generate the Fresh JSON ---
+HOSTNAME=$(hostname)
+
+# Serial and Model logic
+if [ -f /sys/class/sunxi_info/sys_info ]; then
+    SERIAL=$(grep chipid /sys/class/sunxi_info/sys_info | cut -d: -f2 | tr -d " \n")
+    MODEL="opi"
+elif grep -q "Serial" /proc/cpuinfo; then
+    SERIAL=$(grep Serial /proc/cpuinfo | cut -d: -f2 | tr -d " \n")
+    MODEL="rpi"
+else
+    SERIAL="NA"
+    MODEL="unknown"
+fi
+
+# Network logic (Standardized to "NA")
+INTERFACES_IP=$(jq -n '{}')
+INTERFACES_MAC=$(jq -n '{}')
+
+for interface in /sys/class/net/*; do
+    ifname=$(basename "$interface")
+    [ "$ifname" == "lo" ] && continue
+    ip_addr=$(ip -4 addr show "$ifname" | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n 1)
+    [ -z "$ip_addr" ] && ip_addr="NA"
+    mac_addr=$(cat "$interface/address" 2>/dev/null || echo "NA")
+    INTERFACES_IP=$(echo "$INTERFACES_IP" | jq --arg iface "$ifname" --arg ip "$ip_addr" '. + {($iface): $ip}')
+    INTERFACES_MAC=$(echo "$INTERFACES_MAC" | jq --arg iface "$ifname" --arg mac "$mac_addr" '. + {($iface): $mac}')
+done
+
+# Version logic
+KVM_VER=$(cat /usr/share/kvmd/web/version 2>/dev/null || echo "NA")
+AVM_VER=$(/usr/share/avm/avm -version 2>/dev/null | head -n 1 || echo "NA")
+AUTO_VER=$(cat /opt/automation/version 2>/dev/null || echo "NA")
+
+# OS Details logic (Standardized pretty_name)
+OS_NAME=$(grep '^PRETTY_NAME=' /etc/os-release | cut -d= -f2 | tr -d '"' | head -n 1)
+KERNEL=$(uname -r)
+ARCH=$(uname -m)
+
+# Build the JSON
+jq -n \
+  --arg hn "$HOSTNAME" \
+  --arg sn "$SERIAL" \
+  --arg md "$MODEL" \
+  --argjson ip "$INTERFACES_IP" \
+  --argjson mac "$INTERFACES_MAC" \
+  --arg kvm "$KVM_VER" \
+  --arg avm "$AVM_VER" \
+  --arg auto "$AUTO_VER" \
+  --arg ts "$(date --iso-8601=seconds)" \
+  --arg os "$OS_NAME" \
+  --arg kn "$KERNEL" \
+  --arg ar "$ARCH" \
+  '{
+    hostname: $hn,
+    serial: $sn,
+    model: $md,
+    interface_ip: $ip,
+    interfaces_mac: $mac,
+    kvm: { version: $kvm },
+    avm: { version: $avm },
+    automation: { version: $auto },
+    linux_os: {
+        pretty_name: $os,
+        kernel: $kn,
+        architecture: $ar
+    },
+    updated: $ts
+  }' > "$TEMP_FILE"
+
+# --- 2. Compare and Post ---
+
+# If cache doesn't exist, create it so we can compare
+if [ ! -f "$CACHE_FILE" ]; then
+    cp "$TEMP_FILE" "$CACHE_FILE"
+    echo "Initial cache created. Performing first POST..."
+    curl -X POST -H "Content-Type: application/json" -d @"$CACHE_FILE" "$API_URL?key=$AUTH_KEY"
+    exit 0
+fi
+
+# Compare files (ignoring the "updated" timestamp line for comparison)
+# We filter out "updated" because it changes every time the script runs
+if ! diff <(jq 'del(.updated)' "$CACHE_FILE") <(jq 'del(.updated)' "$TEMP_FILE") > /dev/null; then
+    echo "Changes detected. Updating cache and sending POST..."
+    mv "$TEMP_FILE" "$CACHE_FILE"
+    curl -L -X POST -H "Content-Type: application/json" -d @"$CACHE_FILE" "$API_URL?key=$AUTH_KEY"
+else
+    echo "No changes (excluding timestamp). Doing nothing."
+    rm "$TEMP_FILE"
+fi

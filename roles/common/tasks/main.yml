@@ -1,0 +1,9 @@
+---
+- name: Include cron tasks
+  include_tasks: cron.yml
+
+- name: Include MOTD tasks
+  include_tasks: motd.yml
+
+- name: Include SSH tasks
+  include_tasks: ssh.yml
