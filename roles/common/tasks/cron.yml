@@ -15,4 +15,4 @@
   cron:
     name: "Auto-pull git updates"
     minute: "*/10"
-    job: "/opt/automation/bootstrap.sh --pull"
+    job: "cd /opt/automation/ && ./bootstrap.sh --pull"
