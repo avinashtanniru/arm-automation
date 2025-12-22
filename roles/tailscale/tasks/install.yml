@@ -68,14 +68,17 @@
 - name: Check current Tailscale status
   ansible.builtin.command: tailscale status --json
   register: tailscale_status_json
-  ignore_errors: true # In case tailscale is not installed or the daemon isn't running
+  failed_when: false # Don't fail if tailscale returns non-zero (e.g. not logged in)
   changed_when: false # This task only gathers info, doesn't change state
 
 - name: Parse Tailscale status to check backend state
   ansible.builtin.set_fact:
     ts_backend_state: "{{ (tailscale_status_json.stdout | from_json)['BackendState'] }}"
-  # Only run this if the previous command was successful
-  when: tailscale_status_json.rc == 0
+  # Only run this if the previous command was successful and output looks like JSON
+  when: 
+    - tailscale_status_json.rc == 0
+    - tailscale_status_json.stdout | length > 0
+    - tailscale_status_json.stdout[0] == '{'
 
 - name: Run 'tailscale up' with auth key if not connected/running
   ansible.builtin.command: >
