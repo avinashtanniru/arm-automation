@@ -11,7 +11,8 @@
 - name: Configure /var/run/motd (Debian)
   template:
     src: motd-mini.j2
-    dest: /var/run/motd
+    # dest: /var/run/motd
+    dest: /etc/update-motd.d/99-blank
     owner: root
     group: root
     mode: '0644'
