@@ -1,4 +1,9 @@
 ---
+- name: Remove cache if it exists
+  ansible.builtin.file:
+    path: "{{ common_info_cache_file }}"
+    state: absent
+
 - name: Template script to /usr/local/bin
   template:
     src: "generate_info.sh.j2"
