@@ -31,9 +31,10 @@
   when: ansible_os_family == "Debian"
 
 # --- Arch Linux ---
-- name: Install Tailscale (Arch)
+- name: Install Tailscale and dependencies (Arch)
   community.general.pacman:
-    name: tailscale
+    name:
+      - tailscale
     state: present
     update_cache: yes
   when: ansible_os_family == "Archlinux"
@@ -46,20 +47,22 @@
     enabled: yes
 
 # --- Configuration ---
-- name: Configure sysctl for Tailscale routing
-  ansible.builtin.copy:
-    dest: /etc/sysctl.d/99-tailscale.conf
-    content: |
-      net.ipv4.ip_forward = 1
-      net.ipv6.conf.all.forwarding = 1
-    owner: root
-    group: root
-    mode: '0644'
+# --- Configuration ---
+- name: Enable IPv4 forwarding
+  ansible.builtin.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_file: /etc/sysctl.d/99-tailscale.conf
+    state: present
+    reload: yes
 
-- name: Apply sysctl settings
-  ansible.builtin.command:
-    cmd: sysctl -p /etc/sysctl.d/99-tailscale.conf
-  changed_when: false
+- name: Enable IPv6 forwarding
+  ansible.builtin.sysctl:
+    name: net.ipv6.conf.all.forwarding
+    value: '1'
+    sysctl_file: /etc/sysctl.d/99-tailscale.conf
+    state: present
+    reload: yes
 
 - name: Wait for Tailscale service to be ready
   ansible.builtin.command: tailscale status --json
