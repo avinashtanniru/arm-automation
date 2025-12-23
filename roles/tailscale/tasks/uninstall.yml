@@ -35,3 +35,13 @@
   ansible.builtin.file:
     path: /etc/sysctl.d/99-tailscale.conf
     state: absent
+
+- name: Remove Tailscale state directory
+  ansible.builtin.file:
+    path: /var/lib/tailscale
+    state: absent
+
+- name: Remove Tailscale configuration directory
+  ansible.builtin.file:
+    path: /etc/tailscale
+    state: absent
