@@ -37,6 +37,13 @@
     mode: '0644'
   notify: Restart KVM
 
+- name: Stop and disable kvmd-webterm
+  ansible.builtin.systemd:
+    name: kvmd-webterm
+    state: stopped
+    enabled: no
+  ignore_errors: true
+
 - name: Update KVM Web Interface
   block:
     - name: Stop kvmd-nginx service
