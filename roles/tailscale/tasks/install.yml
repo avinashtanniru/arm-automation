@@ -60,6 +60,15 @@
     cmd: sysctl -p /etc/sysctl.d/99-tailscale.conf
   changed_when: false
 
+- name: Wait for Tailscale service to be ready
+  ansible.builtin.command: tailscale status --json
+  register: ts_ready_check
+  until: ts_ready_check.rc == 0
+  retries: 20
+  delay: 3
+  changed_when: false
+  ignore_errors: true
+
 - name: Configure Tailscale to advertise exit node
   ansible.builtin.command:
     cmd: tailscale set --advertise-exit-node
