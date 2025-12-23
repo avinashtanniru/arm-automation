@@ -85,6 +85,10 @@
     - (tailscale_status_json.stdout | trim | first) == '{'
   ignore_errors: true
 
+- name: Debug Tailscale state
+  ansible.builtin.debug:
+    msg: "Backend State: {{ ts_backend_state | default('UNDEFINED') }} | Status RC: {{ tailscale_status_json.rc }} | Status Output: {{ tailscale_status_json.stdout }}"
+
 - name: Run 'tailscale up' with auth key if not connected/running
   ansible.builtin.command: >
     tailscale up --auth-key={{ ts_auth_key }} --hostname={{ hostname }} --advertise-exit-node --accept-routes
