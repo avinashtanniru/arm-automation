@@ -65,6 +65,10 @@
     cmd: tailscale set --advertise-exit-node
   changed_when: false
 
+- name: Initialize Tailscale backend state
+  ansible.builtin.set_fact:
+    ts_backend_state: 'Stopped'
+
 - name: Check current Tailscale status
   ansible.builtin.command: tailscale status --json
   register: tailscale_status_json
@@ -78,7 +82,8 @@
   when: 
     - tailscale_status_json.rc == 0
     - tailscale_status_json.stdout | length > 0
-    - tailscale_status_json.stdout[0] == '{'
+    - (tailscale_status_json.stdout | trim | first) == '{'
+  ignore_errors: true
 
 - name: Run 'tailscale up' with auth key if not connected/running
   ansible.builtin.command: >
