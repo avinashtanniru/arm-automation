@@ -73,10 +73,6 @@
   changed_when: false
   ignore_errors: true
 
-- name: Debug Wait Result
-  ansible.builtin.debug:
-    var: ts_ready_check
-
 - name: Configure Tailscale to advertise exit node
   ansible.builtin.command:
     cmd: tailscale set --advertise-exit-node
@@ -92,10 +88,6 @@
   failed_when: false # Don't fail if tailscale returns non-zero (e.g. not logged in)
   changed_when: false # This task only gathers info, doesn't change state
 
-- name: Debug Raw Status
-  ansible.builtin.debug:
-    var: tailscale_status_json
-
 - name: Parse Tailscale status to check backend state
   ansible.builtin.set_fact:
     ts_backend_state: "{{ (tailscale_status_json.stdout | from_json)['BackendState'] }}"
@@ -105,10 +97,6 @@
     - tailscale_status_json.stdout | length > 0
     - (tailscale_status_json.stdout | trim | first) == '{'
   ignore_errors: true
-
-- name: Debug Parsed Backend State
-  ansible.builtin.debug:
-    msg: "Final Backend State: {{ ts_backend_state }} | Condition check: {{ ts_backend_state | default('Stopped') != 'Running' }}"
 
 - name: Run 'tailscale up' with auth key if not connected/running
   ansible.builtin.command: >
