@@ -5,6 +5,7 @@
     name:
       - curl
       - gpg
+      - procps
     state: present
   when: ansible_os_family == "Debian"
 
