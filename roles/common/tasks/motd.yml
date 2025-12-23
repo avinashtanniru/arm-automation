@@ -15,5 +15,5 @@
     dest: /etc/update-motd.d/99-blank
     owner: root
     group: root
-    mode: '0644'
+    mode: '0755'
   when: ansible_os_family == 'Debian'
