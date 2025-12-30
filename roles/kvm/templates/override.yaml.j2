@@ -8,7 +8,20 @@ kvmd:
 
 {% if ansible_os_family == 'Archlinux' %}
 otg:
-  devices:
-    audio:
-      enabled: true
+    manufacturer: "Dell Inc."
+    product: "Dell U2723QE Hub"  # Sets the main USB device name
+    vendor_id: 0x413c            # Dell Vendor ID
+    product_id: 0x2113           # Dell Keyboard/Hub ID
+    serial: "CAFEBABE"           # Matching your requested serial
+    devices:
+        keyboard:
+            manufacturer: "Dell Inc."
+            product: "Dell Keyboard"
+        mouse:
+            manufacturer: "Dell Inc."
+            product: "Dell Mouse"
+        audio:
+            enabled: true
+            manufacturer: "Dell Inc."
+            product: "Dell Audio"
 {% endif %}
