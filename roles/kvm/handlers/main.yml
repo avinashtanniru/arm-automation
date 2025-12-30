@@ -3,3 +3,4 @@
   ansible.builtin.systemd:
     name: kvmd-nginx
     state: restarted
+    daemon_reload: yes
