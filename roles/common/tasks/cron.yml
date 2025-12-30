@@ -1,4 +1,17 @@
 ---
+- name: Install cronie (Archlinux)
+  ansible.builtin.package:
+    name: cronie
+    state: present
+  when: ansible_os_family == "Archlinux"
+
+- name: Enable and start cronie (Archlinux)
+  ansible.builtin.service:
+    name: cronie
+    state: started
+    enabled: yes
+  when: ansible_os_family == "Archlinux"
+
 - name: Remove cache if it exists
   ansible.builtin.file:
     path: "{{ common_info_cache_file }}"

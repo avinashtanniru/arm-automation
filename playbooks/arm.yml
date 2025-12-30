@@ -8,6 +8,7 @@
       ansible.builtin.setup:
         gather_subset:
           - os_family
+          - distribution
           - '!all' # This ensures only the specified subset is gathered
     - name: Set filesystem to rw (Archlinux)
       command: rw
