@@ -18,6 +18,11 @@
         name: "{{ item }}"
       loop: "{{ roles | default([]) }}"
 
+    - name: Sync filesystem prior to ro (Archlinux)
+      command: sync
+      when: ansible_os_family == "Archlinux"
+
     - name: Set filesystem to ro (Archlinux)
       command: ro
       when: ansible_os_family == "Archlinux"
+      ignore_errors: true
