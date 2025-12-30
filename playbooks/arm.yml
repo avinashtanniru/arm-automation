@@ -9,7 +9,15 @@
         gather_subset:
           - os_family
           - '!all' # This ensures only the specified subset is gathered
+    - name: Set filesystem to rw (Archlinux)
+      command: rw
+      when: ansible_os_family == "Archlinux"
+
     - name: Run dynamic roles
       include_role:
         name: "{{ item }}"
       loop: "{{ roles | default([]) }}"
+
+    - name: Set filesystem to ro (Archlinux)
+      command: ro
+      when: ansible_os_family == "Archlinux"
