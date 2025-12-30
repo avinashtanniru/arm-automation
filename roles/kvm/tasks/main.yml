@@ -107,12 +107,13 @@
 - name: Configure EDID
   ansible.builtin.command: >
     kvmd-edidconf
-    --vendor DEL
-    --product 0x7770
-    --serial 0x01010101
-    --name "Dell U2723QE"
-    --monitor-serial CAFEBABE
-    --audio
+    --set-mfc-id DEL
+    --set-product-id 0x7770
+    --set-serial 0x01010101
+    --set-monitor-name "Dell U2723QE"
+    --set-monitor-serial CAFEBABE
+    --set-audio yes
+    --apply
   when: >
     'Manufacturer ID: DEL' not in edid_current.stdout or
     'Product ID:      0x7770' not in edid_current.stdout or
