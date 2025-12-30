@@ -98,3 +98,34 @@
 
   when: (current_version | default('none')) != target_version
 
+- name: Check current EDID configuration
+  ansible.builtin.command: kvmd-edidconf
+  register: edid_current
+  changed_when: false
+  ignore_errors: true
+
+- name: Configure EDID
+  ansible.builtin.command: >
+    kvmd-edidconf
+    --vendor DEL
+    --product 0x7770
+    --serial 0x01010101
+    --name "Dell U2723QE"
+    --monitor-serial CAFEBABE
+    --audio
+  when: >
+    'Manufacturer ID: DEL' not in edid_current.stdout or
+    'Product ID:      0x7770' not in edid_current.stdout or
+    'Serial number:   0x01010101' not in edid_current.stdout or
+    'Monitor name:    Dell U2723QE' not in edid_current.stdout or
+    'Monitor serial:  CAFEBABE' not in edid_current.stdout or
+    'Audio:           yes' not in edid_current.stdout
+  notify: Restart KVM
+
+- name: Configure kvmd override.yaml
+  ansible.builtin.template:
+    src: override.yaml.j2
+    dest: /etc/kvmd/override.yaml
+    mode: '0644'
+  notify: Restart KVM
+

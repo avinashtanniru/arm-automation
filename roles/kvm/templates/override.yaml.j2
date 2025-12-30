@@ -1,0 +1,14 @@
+kvmd:
+  otg:
+    manufacturer: Logitech
+    product: Gaming Keyboard G Pro
+    serial: 1337BEEFCAFE
+    vendor_id: 0x046D
+    product_id: 0xC33F
+
+{% if ansible_os_family == 'Archlinux' %}
+otg:
+  devices:
+    audio:
+      enabled: true
+{% endif %}
