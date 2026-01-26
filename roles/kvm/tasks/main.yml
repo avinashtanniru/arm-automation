@@ -121,6 +121,7 @@
     'Monitor name:    Dell U2723QE' not in edid_current.stdout or
     'Monitor serial:  CAFEBABE' not in edid_current.stdout or
     'Audio:           yes' not in edid_current.stdout
+  ignore_errors: true
   notify: Restart KVM
 
 - name: Configure kvmd override.yaml
