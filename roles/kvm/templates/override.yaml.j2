@@ -1,4 +1,10 @@
 kvmd:
+{% if ansible_os_family != 'Archlinux' %}
+  msd:
+    type: disabled
+  atx:
+    type: disabled
+{% endif %}
   otg:
     manufacturer: Logitech
     product: Gaming Keyboard G Pro
