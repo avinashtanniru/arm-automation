@@ -39,6 +39,23 @@
     update_cache: yes
   when: ansible_os_family == "Archlinux"
 
+# --- State Management ---
+- name: Force new machine identity (Stop service)
+  ansible.builtin.systemd:
+    name: tailscaled
+    state: stopped
+  when: tailscale_force_new_machine | bool
+  ignore_errors: true
+
+- name: Force new machine identity (Remove state)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /var/lib/tailscale/tailscaled.state
+    - /var/lib/tailscale/tailscaled.log.conf
+  when: tailscale_force_new_machine | bool
+
 # --- Service Management ---
 - name: Enable and start Tailscaled
   ansible.builtin.systemd:
