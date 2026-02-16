@@ -33,4 +33,4 @@
   cron:
     name: "Auto-pull git updates"
     minute: "*/10"
-    job: "{% if ansible_os_family == 'Archlinux' %}rw && cd /opt/automation/ && ./bootstrap.sh --pull > /tmp/bootstrap.log 2>&1 && ro{% else %}cd /opt/automation/ && ./bootstrap.sh --pull > /tmp/bootstrap.log 2>&1{% endif %}"
+    job: "{% if ansible_os_family == 'Archlinux' %}rw && cd /opt/automation/ && ./bootstrap.sh --pull | grep -v ansible-pull > /tmp/bootstrap.log 2>&1 ; ro{% else %}cd /opt/automation/ && ./bootstrap.sh --pull | grep -v ansible-pull > /tmp/bootstrap.log 2>&1{% endif %}"
