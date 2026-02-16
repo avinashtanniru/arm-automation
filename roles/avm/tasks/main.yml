@@ -66,6 +66,7 @@
   when: >
     current_avm_version.rc != 0 or 
     avm_version not in current_avm_version.stdout
+  notify: Restart AVM
 
 - name: Configure AVM service
   ansible.builtin.template:
