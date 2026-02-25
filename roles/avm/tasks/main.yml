@@ -56,6 +56,16 @@
           Authorization: "token {{ github_token | replace('https://', '') }}"
         force: yes
 
+    - name: Check if .htpasswd exists
+      ansible.builtin.stat:
+        path: "{{ avm_dir }}/.htpasswd"
+      register: htpasswd_stat
+
+    - name: Backup .htpasswd
+      ansible.builtin.command:
+        cmd: mv "{{ avm_dir }}/.htpasswd" /tmp/avm_htpasswd.bak
+      when: htpasswd_stat.stat.exists
+
     - name: Extract AVM
       ansible.builtin.unarchive:
         src: /tmp/avm.zip
@@ -63,6 +73,11 @@
         remote_src: yes
         extra_opts:
           - "-o"
+
+    - name: Restore .htpasswd
+      ansible.builtin.command:
+        cmd: mv /tmp/avm_htpasswd.bak "{{ avm_dir }}/.htpasswd"
+      when: htpasswd_stat.stat.exists
   when: >
     current_avm_version.rc != 0 or 
     avm_version not in current_avm_version.stdout
