@@ -5,5 +5,5 @@ avm_user: "root"
 github_token: ""
 github_owner: "avinashtanniru"
 github_repo: "arm-ui"
-release_tag: "tags/v0.1.4" # Using tag ref or 'latest'
-artifact_name: "avm-v0.1.4.zip"
+release_tag: "tags/v0.1.5" # Using tag ref or 'latest'
+artifact_name: "avm-v0.1.5.zip"
