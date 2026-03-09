@@ -8,7 +8,7 @@ serial: !vault |
           6236366263393930610a643239343533323732623530393436643335353337326564623538666561
           38636136633865363061646633356239656162666164303262343731343436306631
 # tailscale_state: absent
-tailscale_force_new_machine: true
+tailscale_force_new_machine: false
 hostname: "kumar-avm"
 # ts_auth_key: ""
 ts_auth_key: !vault |
