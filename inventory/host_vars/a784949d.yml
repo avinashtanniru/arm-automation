@@ -10,7 +10,7 @@ serial: !vault |
           6533623564306339326232383133663032636232393733386537
 # tailscale_state: absent
 hostname: "ashok-avm"
-tailscale_force_new_machine: true
+tailscale_force_new_machine: false
 # ts_auth_key: ""
 ts_auth_key: !vault |
           $ANSIBLE_VAULT;1.1;AES256
