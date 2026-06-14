@@ -8,7 +8,7 @@ serial: !vault |
           3430323664356233610a306665633132643761306636363735613365623063306137383963313938
           62653539373130633730393435356363363239393237616665663963653132346163
 # tailscale_state: absent
-tailscale_force_new_machine: true
+tailscale_force_new_machine: false
 hostname: "sudeep-avm"
 # ts_auth_key: ""
 ts_auth_key: !vault |
