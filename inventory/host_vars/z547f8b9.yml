@@ -9,7 +9,7 @@ serial: !vault |
           33613433646563306362663165656133343836633639646662626665646166396266323539633564
           3232613838366632376333353962376138306631353633353265
 # tailscale_state: absent
-tailscale_force_new_machine: true
+tailscale_force_new_machine: false
 hostname: "zkumar-avm"
 # ts_auth_key: ""
 ts_auth_key: !vault |
