@@ -144,3 +144,14 @@
     mode: '0644'
   notify: Restart KVM
 
+- name: Generate 2FA TOTP secret
+  ansible.builtin.copy:
+    dest: /etc/kvmd/totp.secret
+    content: "{{ lookup('ansible.builtin.password', '/dev/null length=32 chars=ABCDEFGHIJKLMNOPQRSTUVWXYZ') }}\n"
+    force: false
+    creates: /etc/kvmd/totp.secret
+    mode: '0600'
+  when: enable_2fa | default(false) | bool
+  notify: Restart KVM
+
+

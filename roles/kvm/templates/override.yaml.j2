@@ -1,4 +1,6 @@
 kvmd:
+  auth:
+    expire: 14400
 {% if ansible_os_family != 'Archlinux' %}
   msd:
     type: disabled

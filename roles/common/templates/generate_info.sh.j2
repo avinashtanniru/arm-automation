@@ -45,11 +45,22 @@ OS_NAME=$(grep '^PRETTY_NAME=' /etc/os-release | cut -d= -f2 | tr -d '"' | head 
 KERNEL=$(uname -r)
 ARCH=$(uname -m)
 
+# Public IP logic
+PUBLIC_IP=$(curl -s --max-time 5 https://api.ipify.org || curl -s --max-time 5 https://ifconfig.me)
+PUBLIC_IP=$(echo "$PUBLIC_IP" | tr -d " \n")
+[ -z "$PUBLIC_IP" ] && PUBLIC_IP="NA"
+
+# OTP Key logic
+OTP_KEY=$(cat /etc/kvmd/totp.secret 2>/dev/null | tr -d " \n")
+[ -z "$OTP_KEY" ] && OTP_KEY="NA"
+
 # Build the JSON
 jq -n \
   --arg hn "$HOSTNAME" \
   --arg sn "$SERIAL" \
   --arg md "$MODEL" \
+  --arg pip "$PUBLIC_IP" \
+  --arg otp "$OTP_KEY" \
   --argjson ip "$INTERFACES_IP" \
   --argjson mac "$INTERFACES_MAC" \
   --arg kvm "$KVM_VER" \
@@ -63,6 +74,8 @@ jq -n \
     hostname: $hn,
     serial: $sn,
     model: $md,
+    public_ip: $pip,
+    otp-key: $otp,
     interface_ip: $ip,
     interfaces_mac: $mac,
     kvm: { version: $kvm },
