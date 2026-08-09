@@ -144,10 +144,15 @@
     mode: '0644'
   notify: Restart KVM
 
-- name: Check /etc/kvmd/totp.secret status
-  ansible.builtin.stat:
-    path: /etc/kvmd/totp.secret
-  register: totp_secret_file
+- name: Read /etc/kvmd/totp.secret
+  ansible.builtin.slurp:
+    src: /etc/kvmd/totp.secret
+  register: totp_secret_b64
+  ignore_errors: true
+
+- name: Set totp_secret_current fact
+  ansible.builtin.set_fact:
+    totp_secret_current: "{{ (totp_secret_b64.content | default('') | b64decode | trim) if (totp_secret_b64.content is defined) else '' }}"
 
 - name: Generate 2FA TOTP secret
   ansible.builtin.copy:
@@ -156,7 +161,7 @@
     mode: '0600'
   when:
     - enable_2fa | default(false) | bool
-    - not totp_secret_file.stat.exists or totp_secret_file.stat.size == 0
+    - totp_secret_current == ""
   notify: Restart KVM
 
 - name: Clear 2FA TOTP secret content when 2FA is disabled
@@ -164,5 +169,8 @@
     dest: /etc/kvmd/totp.secret
     content: ""
     mode: '0600'
-  when: not (enable_2fa | default(false) | bool)
+  when:
+    - not (enable_2fa | default(false) | bool)
+    - totp_secret_current != ""
   notify: Restart KVM
+
