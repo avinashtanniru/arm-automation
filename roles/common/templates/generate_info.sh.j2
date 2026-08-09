@@ -95,7 +95,7 @@ jq -n \
 if [ ! -f "$CACHE_FILE" ]; then
     cp "$TEMP_FILE" "$CACHE_FILE"
     echo "Initial cache created. Performing first POST..."
-    curl -X POST -H "Content-Type: application/json" -d @"$CACHE_FILE" "$API_URL?key=$AUTH_KEY"
+    curl -L -X POST -H "Content-Type: application/json" -d @"$CACHE_FILE" "$API_URL?key=$AUTH_KEY"
     exit 0
 fi
 
