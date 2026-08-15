@@ -1,35 +1,34 @@
 kvmd:
   auth:
     expire: 14400
-{% if ansible_os_family != 'Archlinux' %}
+  # This completely disables the Virtual Media / CD-ROM drive
   msd:
     type: disabled
   atx:
     type: disabled
-{% endif %}
+{% if ansible_os_family != 'Archlinux' %}
   otg:
     manufacturer: Logitech
     product: Gaming Keyboard G Pro
     serial: 1337BEEFCAFE
     vendor_id: 0x046D
     product_id: 0xC33F
-
-{% if ansible_os_family == 'Archlinux' %}
-otg:
+{% else %}
+  otg:
     manufacturer: "Dell Inc."
     product: "Dell U2723QE Hub"  # Sets the main USB device name
     vendor_id: 0x413c            # Dell Vendor ID
     product_id: 0x2113           # Dell Keyboard/Hub ID
     serial: "CAFEBABE"           # Matching your requested serial
     devices:
-        keyboard:
-            manufacturer: "Dell Inc."
-            product: "Dell Keyboard"
-        mouse:
-            manufacturer: "Dell Inc."
-            product: "Dell Mouse"
-        audio:
-            enabled: true
-            manufacturer: "Dell Inc."
-            product: "Dell Audio"
+      keyboard:
+        manufacturer: "Dell Inc."
+        product: "Dell Keyboard"
+      mouse:
+        manufacturer: "Dell Inc."
+        product: "Dell Mouse"
+      audio:
+        enabled: true
+        manufacturer: "Dell Inc."
+        product: "Dell Audio"
 {% endif %}
