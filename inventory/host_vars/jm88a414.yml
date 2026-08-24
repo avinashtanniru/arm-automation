@@ -27,3 +27,6 @@ roles:
   - kvm
   - avm
   - tailscale
+avm_version: "v0.1.6"
+release_tag: "tags/v0.1.6" # Using tag ref or 'latest'
+artifact_name: "avm-v0.1.6.zip"
