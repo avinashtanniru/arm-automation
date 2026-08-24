@@ -9,7 +9,7 @@ serial: !vault |
           36623330616537333437653061336265643130616535643366643963353236303932306439653131
           3661656635663361356464333639363764643134356432613136
 # tailscale_state: absent
-tailscale_force_new_machine: true
+tailscale_force_new_machine: false
 hostname: "jhanu-avmmini"
 # ts_auth_key: ""
 ts_auth_key: !vault |
