@@ -8,7 +8,7 @@ serial: !vault |
           3438303566616431380a396130646639353363646236326133313634346632376430636664313131
           61623630396163663631656336353266613039353632653436363938306139333064
 # tailscale_state: absent
-tailscale_force_new_machine: true
+tailscale_force_new_machine: false
 hostname: "avmmax-in"
 # ts_auth_key: ""
 ts_auth_key: !vault |
@@ -21,6 +21,7 @@ ts_auth_key: !vault |
           31653261363963363063393661666439613830363739636566363132616365376331666164386632
           363133393732633135366338373133313733
 enable_2fa: true
+web_max_version: "v0.1.2"
 roles:
   - common
   - kvm
