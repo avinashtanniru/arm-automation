@@ -7,17 +7,10 @@
 - name: Check if kvmd-nginx service exists
   ansible.builtin.service_facts:
 
-- name: Set target version variables (Mini)
+- name: Set target version variables
   ansible.builtin.set_fact:
-    target_version: "{{ web_mini_version }}"
-    target_zip: "web-mini-{{ web_mini_version }}.zip"
-  when: model | default('opi') == 'opi'
-
-- name: Set target version variables (Max)
-  ansible.builtin.set_fact:
-    target_version: "{{ web_max_version }}"
-    target_zip: "web-max-{{ web_max_version }}.zip"
-  when: model | default('rpi') == 'rpi'
+    target_version: "{{ web_version }}"
+    target_zip: "web-{{ web_version }}.zip"
 
 - name: Check current installed version
   ansible.builtin.slurp:
