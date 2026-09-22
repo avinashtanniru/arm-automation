@@ -10,7 +10,7 @@
 - name: Set target version variables
   ansible.builtin.set_fact:
     target_version: "{{ web_version }}"
-    target_zip: "web-{{ 'mini' if model | default('opi') == 'opi' else 'max' }}-{{ web_version }}.zip"
+    target_zip: "web-{{ web_version }}.zip"
 
 - name: Check current installed version
   ansible.builtin.slurp:
