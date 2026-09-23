@@ -1,13 +1,25 @@
 kvmd:
   auth:
     expire: 14400
+{% if ansible_os_family != 'Archlinux' %}
+    allow_redirects:
+      - /
+      - /avm
+      - /avm/
+      - /kvm
+      - /kvm/
+{% endif %}
   msd:
     type: disabled
   atx:
     type: disabled
   hid:
     mouse:
+{% if ansible_os_family != 'Archlinux' %}
+      absolute: true
+{% else %}
       absolute: false
+{% endif %}
     mouse_alt:
       device: ""
 
