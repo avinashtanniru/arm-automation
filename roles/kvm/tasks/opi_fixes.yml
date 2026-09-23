@@ -3,7 +3,7 @@
 
 - name: Create /usr/share/kvmd/web/kvm symlink to avm
   ansible.builtin.file:
-    src: avm
+    src: /usr/share/kvmd/web/avm
     dest: /usr/share/kvmd/web/kvm
     state: link
     force: true
@@ -23,108 +23,85 @@
     replace: '\1\tauth_request off;\n\3'
   ignore_errors: true
 
-- name: Patch htserver.py to handle binary 0x00 ping
-  ansible.builtin.command:
-    cmd: >-
-      python3 -c '
-      path = "/usr/lib/python3/dist-packages/kvmd/htserver.py"
-      try:
-          with open(path, "r") as f:
-              content = f.read()
-          old_code = "elif (handler := self.__ws_bin_handlers.get(msg.data[0])):"
-          new_code = "if msg.data[0] == 0:\n                    await ws.wsr.send_bytes(bytes([0xFF]))\n                elif (handler := self.__ws_bin_handlers.get(msg.data[0])):"
-          if "msg.data[0] == 0" not in content and old_code in content:
-              content = content.replace(old_code, new_code, 1)
-              with open(path, "w") as f:
-                  f.write(content)
-              print("CHANGED")
-      except Exception as e:
-          print("ERROR:", e)
-      '
-  register: htserver_patch
-  changed_when: "'CHANGED' in htserver_patch.stdout"
-  ignore_errors: true
-
-- name: Patch stream.js to initialize __janus_imported = false
-  ansible.builtin.replace:
-    path: /usr/share/kvmd/web/share/js/kvm/stream.js
-    regexp: 'var __janus_imported = null;'
-    replace: 'var __janus_imported = false;'
-  ignore_errors: true
-
-- name: Patch session.js WebSocket event dispatcher
-  ansible.builtin.command:
-    cmd: >-
-      python3 -c '
+- name: Deploy idempotent Python patch script
+  ansible.builtin.copy:
+    dest: /tmp/apply_kvmd_patches.py
+    owner: root
+    group: root
+    mode: '0700'
+    content: |
+      import os
       import re
-      path = "/usr/share/kvmd/web/share/js/kvm/session.js"
-      try:
-          with open(path, "r") as f:
-              content = f.read()
+      import sys
 
-          new_handler = """\tvar __wsJsonHandler = function (ev_type, ev) {
-          \t\tswitch (ev_type) {
-          \t\t\tcase "info": __info.setState(ev); break;
-          \t\t\tcase "info_meta_state": __info.setState({ "meta": ev }); break;
-          \t\t\tcase "info_hw_state": if (ev && ev.health) __info.setState({ "health": ev }); else if (ev) __info.setState({ "health": ev }); break;
-          \t\t\tcase "info_fan_state": __info.setState({ "fan": ev }); break;
-          \t\t\tcase "info_system_state": __info.setState({ "system": ev }); break;
-          \t\t\tcase "info_extras_state": __info.setState({ "extras": ev }); break;
-          \t\t\tcase "gpio":
-          \t\t\tcase "gpio_state": __gpio.setState(ev); break;
-          \t\t\tcase "gpio_model_state": __gpio.setState({ "model": ev }); break;
-          \t\t\tcase "hid":
-          \t\t\tcase "hid_state": __hid.setState(ev); break;
-          \t\t\tcase "hid_keymaps":
-          \t\t\tcase "hid_keymaps_state": __paste.setState(ev); break;
-          \t\t\tcase "atx":
-          \t\t\tcase "atx_state": __atx.setState(ev); break;
-          \t\t\tcase "streamer":
-          \t\t\tcase "streamer_state": __streamer.setState(ev); break;
-          \t\t\tcase "ocr":
-          \t\t\tcase "streamer_ocr_state": __ocr.setState(ev); break;
+      changed = False
 
-          \t\t\tcase "msd":
-          \t\t\tcase "msd_state":
-          \t\t\t\tif (ev.online === false) {
-          \t\t\t\t\t__switch.setMsdConnected(false);
-          \t\t\t\t} else if (ev.drive !== undefined) {
-          \t\t\t\t\t__switch.setMsdConnected(ev.drive.connected);
-          \t\t\t\t}
-          \t\t\t\t__msd.setState(ev);
-          \t\t\t\tbreak;
+      # --- 1. Patch htserver.py (Binary 0x00 ping/pong keepalive) ---
+      htserver_path = "/usr/lib/python3/dist-packages/kvmd/htserver.py"
+      if os.path.exists(htserver_path):
+          with open(htserver_path, "r", encoding="utf-8") as f:
+              htserver = f.read()
+          target = "elif (handler := self.__ws_bin_handlers.get(msg.data[0])):"
+          replacement = "if msg.data[0] == 0:\n                    await ws.wsr.send_bytes(bytes([0xFF]))\n                elif (handler := self.__ws_bin_handlers.get(msg.data[0])):"
+          if "msg.data[0] == 0" not in htserver and target in htserver:
+              htserver = htserver.replace(target, replacement, 1)
+              with open(htserver_path, "w", encoding="utf-8") as f:
+                  f.write(htserver)
+              print("PATCHED: htserver.py")
+              changed = True
 
-          \t\t\tcase "switch":
-          \t\t\t\tif (ev.model) {
-          \t\t\t\t\t__atx.setHasSwitch(ev.model.ports.length > 0);
-          \t\t\t\t}
-          \t\t\t\t__switch.setState(ev);
-          \t\t\t\tbreak;
-          \t\t}
-          \t};"""
+      # --- 2. Patch session.js (WebSocket keepalive dispatcher) ---
+      session_js_path = "/usr/share/kvmd/web/share/js/kvm/session.js"
+      if os.path.exists(session_js_path):
+          with open(session_js_path, "r", encoding="utf-8") as f:
+              session_js = f.read()
+          old_js = "let type = data[0];"
+          new_js = "if (data[0] === 0x00) { try { this.#ws.send(new Uint8Array([0xFF])); } catch (e) {} return; }\n\t\tlet type = data[0];"
+          if "data[0] === 0x00" not in session_js and old_js in session_js:
+              session_js = session_js.replace(old_js, new_js, 1)
+              with open(session_js_path, "w", encoding="utf-8") as f:
+                  f.write(session_js)
+              print("PATCHED: session.js")
+              changed = True
 
-          pattern = r"(\tvar __wsJsonHandler = function \(ev_type, ev\) \{[\s\S]*?\n\t\};)"
-          if "streamer_state" not in content and re.search(pattern, content):
-              content = re.sub(pattern, new_handler, content, count=1)
-              with open(path, "w") as f:
-                  f.write(content)
-              print("CHANGED")
-      except Exception as e:
-          print("ERROR:", e)
-      '
-  register: session_patch
-  changed_when: "'CHANGED' in session_patch.stdout"
-  ignore_errors: true
+      # --- 3. Patch stream.js (Handle path prefix for MJPEG stream) ---
+      stream_js_path = "/usr/share/kvmd/web/share/js/kvm/stream.js"
+      if os.path.exists(stream_js_path):
+          with open(stream_js_path, "r", encoding="utf-8") as f:
+              stream_js = f.read()
+          old_stream = "this.#url = `${this.#proto}://${window.location.host}/stream`;"
+          new_stream = "this.#url = `${this.#proto}://${window.location.host}${window.location.pathname.startsWith('/avm') ? '/avm' : ''}/stream`;"
+          if "startsWith('/avm')" not in stream_js and old_stream in stream_js:
+              stream_js = stream_js.replace(old_stream, new_stream, 1)
+              with open(stream_js_path, "w", encoding="utf-8") as f:
+                  f.write(stream_js)
+              print("PATCHED: stream.js")
+              changed = True
 
-- name: Restart KVMD services on Orange Pi boards
+      if changed:
+          sys.exit(10)  # Signal Ansible that changes were made
+      else:
+          sys.exit(0)   # No changes needed (already up to date)
+
+- name: Run PiKVM patches
+  ansible.builtin.command: python3 /tmp/apply_kvmd_patches.py
+  register: patch_result
+  changed_when: patch_result.rc == 10
+  failed_when: patch_result.rc not in [0, 10]
+
+- name: Remove temporary patch script
+  ansible.builtin.file:
+    path: /tmp/apply_kvmd_patches.py
+    state: absent
+
+- name: Restart PiKVM services immediately if changed
   ansible.builtin.systemd:
-    name: "{{ item }}"
+    name: "{{ kvmd_service }}"
     state: restarted
   loop:
     - kvmd-otg
     - kvmd
     - kvmd-nginx
-  when: >
-    (htserver_patch is defined and htserver_patch.changed) or
-    (session_patch is defined and session_patch.changed)
-  ignore_errors: true
+  loop_control:
+    loop_var: kvmd_service
+  when: patch_result.changed
