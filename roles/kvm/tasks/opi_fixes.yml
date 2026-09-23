@@ -1,0 +1,107 @@
+---
+# Fixes and patches specifically for Orange Pi Zero3 / AVM boards
+
+- name: Create /usr/share/kvmd/web/kvm symlink to avm
+  ansible.builtin.file:
+    src: /usr/share/kvmd/web/avm
+    dest: /usr/share/kvmd/web/kvm
+    state: link
+    force: true
+
+- name: Ensure proxy_cookie_path exists for /streamer in nginx
+  ansible.builtin.lineinfile:
+    path: /etc/kvmd/nginx/kvmd.ctx-server.conf
+    insertafter: 'location /streamer'
+    line: "\tproxy_cookie_path /streamer/ /;"
+    state: present
+  ignore_errors: true
+
+- name: Disable auth_request for janus static JS in nginx (if present)
+  ansible.builtin.replace:
+    path: /usr/share/kvmd/extras/janus/nginx.ctx-server.conf
+    regexp: '(location = /share/js/kvm/(?:janus|adapter)\.js\s*\{[^}]*?)(auth_request off;)?(\s*\})'
+    replace: '\1\tauth_request off;\n\3'
+  ignore_errors: true
+
+- name: Deploy idempotent Python patch script
+  ansible.builtin.copy:
+    dest: /tmp/apply_kvmd_patches.py
+    owner: root
+    group: root
+    mode: '0700'
+    content: |
+      import os
+      import re
+      import sys
+
+      changed = False
+
+      # --- 1. Patch htserver.py (Binary 0x00 ping/pong keepalive) ---
+      htserver_path = "/usr/lib/python3/dist-packages/kvmd/htserver.py"
+      if os.path.exists(htserver_path):
+          with open(htserver_path, "r", encoding="utf-8") as f:
+              htserver = f.read()
+          target = "elif (handler := self.__ws_bin_handlers.get(msg.data[0])):"
+          replacement = "if msg.data[0] == 0:\n                    await ws.wsr.send_bytes(bytes([0xFF]))\n                elif (handler := self.__ws_bin_handlers.get(msg.data[0])):"
+          if "msg.data[0] == 0" not in htserver and target in htserver:
+              htserver = htserver.replace(target, replacement, 1)
+              with open(htserver_path, "w", encoding="utf-8") as f:
+                  f.write(htserver)
+              print("PATCHED: htserver.py")
+              changed = True
+
+      # --- 2. Patch session.js (WebSocket keepalive dispatcher) ---
+      session_js_path = "/usr/share/kvmd/web/share/js/kvm/session.js"
+      if os.path.exists(session_js_path):
+          with open(session_js_path, "r", encoding="utf-8") as f:
+              session_js = f.read()
+          old_js = "let type = data[0];"
+          new_js = "if (data[0] === 0x00) { try { this.#ws.send(new Uint8Array([0xFF])); } catch (e) {} return; }\n\t\tlet type = data[0];"
+          if "data[0] === 0x00" not in session_js and old_js in session_js:
+              session_js = session_js.replace(old_js, new_js, 1)
+              with open(session_js_path, "w", encoding="utf-8") as f:
+                  f.write(session_js)
+              print("PATCHED: session.js")
+              changed = True
+
+      # --- 3. Patch stream.js (Handle path prefix for MJPEG stream) ---
+      stream_js_path = "/usr/share/kvmd/web/share/js/kvm/stream.js"
+      if os.path.exists(stream_js_path):
+          with open(stream_js_path, "r", encoding="utf-8") as f:
+              stream_js = f.read()
+          old_stream = "this.#url = `${this.#proto}://${window.location.host}/stream`;"
+          new_stream = "this.#url = `${this.#proto}://${window.location.host}${window.location.pathname.startsWith('/avm') ? '/avm' : ''}/stream`;"
+          if "startsWith('/avm')" not in stream_js and old_stream in stream_js:
+              stream_js = stream_js.replace(old_stream, new_stream, 1)
+              with open(stream_js_path, "w", encoding="utf-8") as f:
+                  f.write(stream_js)
+              print("PATCHED: stream.js")
+              changed = True
+
+      if changed:
+          sys.exit(10)  # Signal Ansible that changes were made
+      else:
+          sys.exit(0)   # No changes needed (already up to date)
+
+- name: Run PiKVM patches
+  ansible.builtin.command: python3 /tmp/apply_kvmd_patches.py
+  register: patch_result
+  changed_when: patch_result.rc == 10
+  failed_when: patch_result.rc not in [0, 10]
+
+- name: Remove temporary patch script
+  ansible.builtin.file:
+    path: /tmp/apply_kvmd_patches.py
+    state: absent
+
+- name: Restart PiKVM services immediately if changed
+  ansible.builtin.systemd:
+    name: "{{ kvmd_service }}"
+    state: restarted
+  loop:
+    - kvmd-otg
+    - kvmd
+    - kvmd-nginx
+  loop_control:
+    loop_var: kvmd_service
+  when: patch_result.changed

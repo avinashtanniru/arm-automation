@@ -167,3 +167,8 @@
     - totp_secret_current != ""
   notify: Restart KVM
 
+- name: Include Orange Pi specific fixes
+  ansible.builtin.include_tasks: opi_fixes.yml
+  when: (model | default('')) == 'opi'
+
+
