@@ -25,97 +25,11 @@
 
 - name: Deploy idempotent Python patch script
   ansible.builtin.copy:
+    src: apply_kvmd_patches.py
     dest: /tmp/apply_kvmd_patches.py
     owner: root
     group: root
     mode: '0700'
-    content: |
-      import os
-      import sys
-
-      changed = False
-
-      # --- 1. Patch htserver.py (Binary 0x00 ping/pong keepalive) ---
-      htserver_path = "/usr/lib/python3/dist-packages/kvmd/htserver.py"
-      if os.path.exists(htserver_path):
-          with open(htserver_path, "r", encoding="utf-8") as f:
-              htserver = f.read()
-
-          if "msg.data[0] == 0" not in htserver:
-              # Pattern A (standard assignment in 3.291)
-              old_a = "elif msg.type == WSMsgType.BINARY and len(msg.data) >= 1:\n                handler = self.__ws_bin_handlers.get(msg.data[0])"
-              new_a = "elif msg.type == WSMsgType.BINARY and len(msg.data) >= 1:\n                if msg.data[0] == 0:\n                    await ws.wsr.send_bytes(bytes([255]))\n                else:\n                    handler = self.__ws_bin_handlers.get(msg.data[0])"
-
-              # Pattern B (walrus operator in newer kvmd)
-              old_b = "elif (handler := self.__ws_bin_handlers.get(msg.data[0])):"
-              new_b = "if msg.data[0] == 0:\n                    await ws.wsr.send_bytes(bytes([255]))\n                elif (handler := self.__ws_bin_handlers.get(msg.data[0])):"
-
-              if old_a in htserver:
-                  htserver = htserver.replace(old_a, new_a, 1)
-                  changed = True
-              elif old_b in htserver:
-                  htserver = htserver.replace(old_b, new_b, 1)
-                  changed = True
-
-              if changed:
-                  with open(htserver_path, "w", encoding="utf-8") as f:
-                      f.write(htserver)
-                  print("PATCHED: htserver.py")
-
-      # --- 2. Patch session.js (State Event Dispatcher & Video Activation) ---
-      session_js_path = "/usr/share/kvmd/web/share/js/kvm/session.js"
-      if os.path.exists(session_js_path):
-          with open(session_js_path, "r", encoding="utf-8") as f:
-              session_js = f.read()
-
-          target = "var __wsJsonHandler = function (ev_type, ev) {"
-          replacement = """var __wsJsonHandler = function (ev_type, ev) {
-\t\tif (ev_type === "streamer_state") {
-\t\t\t__streamer.setState(ev);
-\t\t\treturn;
-\t\t} else if (ev_type === "hid_state") {
-\t\t\t__hid.setState(ev);
-\t\t\treturn;
-\t\t} else if (ev_type === "gpio_state") {
-\t\t\t__gpio.setState(ev);
-\t\t\treturn;
-\t\t} else if (ev_type === "atx_state") {
-\t\t\t__atx.setState(ev);
-\t\t\treturn;
-\t\t} else if (ev_type === "msd_state") {
-\t\t\tif (ev.online === false) {
-\t\t\t\t__switch.setMsdConnected(false);
-\t\t\t} else if (ev.drive !== undefined) {
-\t\t\t\t__switch.setMsdConnected(ev.drive.connected);
-\t\t\t}
-\t\t\t__msd.setState(ev);
-\t\t\treturn;
-\t\t} else if (ev_type.startsWith("info_") && ev_type.endsWith("_state")) {
-\t\t\tlet sub = ev_type.slice(5, -6);
-\t\t\t__info.setState({ [sub]: ev });
-\t\t\treturn;
-\t\t} else if (ev_type === "streamer_ocr_state") {
-\t\t\t__ocr.setState(ev);
-\t\t\treturn;
-\t\t} else if (ev_type === "hid_keymaps_state") {
-\t\t\t__paste.setState(ev);
-\t\t\treturn;
-\t\t} else if (ev_type === "pong") {
-\t\t\t__missed_heartbeats = 0;
-\t\t\treturn;
-\t\t}"""
-
-          if target in session_js and "streamer_state" not in session_js:
-              session_js = session_js.replace(target, replacement, 1)
-              with open(session_js_path, "w", encoding="utf-8") as f:
-                  f.write(session_js)
-              print("PATCHED: session.js")
-              changed = True
-
-      if changed:
-          sys.exit(10)
-      else:
-          sys.exit(0)
 
 - name: Run PiKVM patches
   ansible.builtin.command: python3 /tmp/apply_kvmd_patches.py
