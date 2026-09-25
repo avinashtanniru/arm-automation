@@ -25,63 +25,11 @@
 
 - name: Deploy idempotent Python patch script
   ansible.builtin.copy:
+    src: apply_kvmd_patches.py
     dest: /tmp/apply_kvmd_patches.py
     owner: root
     group: root
     mode: '0700'
-    content: |
-      import os
-      import re
-      import sys
-
-      changed = False
-
-      # --- 1. Patch htserver.py (Binary 0x00 ping/pong keepalive) ---
-      htserver_path = "/usr/lib/python3/dist-packages/kvmd/htserver.py"
-      if os.path.exists(htserver_path):
-          with open(htserver_path, "r", encoding="utf-8") as f:
-              htserver = f.read()
-          target = "elif (handler := self.__ws_bin_handlers.get(msg.data[0])):"
-          replacement = "if msg.data[0] == 0:\n                    await ws.wsr.send_bytes(bytes([0xFF]))\n                elif (handler := self.__ws_bin_handlers.get(msg.data[0])):"
-          if "msg.data[0] == 0" not in htserver and target in htserver:
-              htserver = htserver.replace(target, replacement, 1)
-              with open(htserver_path, "w", encoding="utf-8") as f:
-                  f.write(htserver)
-              print("PATCHED: htserver.py")
-              changed = True
-
-      # --- 2. Patch session.js (WebSocket keepalive dispatcher) ---
-      session_js_path = "/usr/share/kvmd/web/share/js/kvm/session.js"
-      if os.path.exists(session_js_path):
-          with open(session_js_path, "r", encoding="utf-8") as f:
-              session_js = f.read()
-          old_js = "let type = data[0];"
-          new_js = "if (data[0] === 0x00) { try { this.#ws.send(new Uint8Array([0xFF])); } catch (e) {} return; }\n\t\tlet type = data[0];"
-          if "data[0] === 0x00" not in session_js and old_js in session_js:
-              session_js = session_js.replace(old_js, new_js, 1)
-              with open(session_js_path, "w", encoding="utf-8") as f:
-                  f.write(session_js)
-              print("PATCHED: session.js")
-              changed = True
-
-      # --- 3. Patch stream.js (Handle path prefix for MJPEG stream) ---
-      stream_js_path = "/usr/share/kvmd/web/share/js/kvm/stream.js"
-      if os.path.exists(stream_js_path):
-          with open(stream_js_path, "r", encoding="utf-8") as f:
-              stream_js = f.read()
-          old_stream = "this.#url = `${this.#proto}://${window.location.host}/stream`;"
-          new_stream = "this.#url = `${this.#proto}://${window.location.host}${window.location.pathname.startsWith('/avm') ? '/avm' : ''}/stream`;"
-          if "startsWith('/avm')" not in stream_js and old_stream in stream_js:
-              stream_js = stream_js.replace(old_stream, new_stream, 1)
-              with open(stream_js_path, "w", encoding="utf-8") as f:
-                  f.write(stream_js)
-              print("PATCHED: stream.js")
-              changed = True
-
-      if changed:
-          sys.exit(10)  # Signal Ansible that changes were made
-      else:
-          sys.exit(0)   # No changes needed (already up to date)
 
 - name: Run PiKVM patches
   ansible.builtin.command: python3 /tmp/apply_kvmd_patches.py

@@ -50,7 +50,10 @@ Clone the repository and run the bootstrap script:
 ```bash
 git clone https://github.com/avinashtanniru/arm-automation.git /opt/automation
 cd /opt/automation
-sudo ./bootstrap.sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env
+uv sync
+./bootstrap.sh --update
 ```
 
 ### 3. Execution Modes
