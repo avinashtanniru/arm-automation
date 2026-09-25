@@ -9,7 +9,7 @@ serial: !vault |
           36366263613166303736643439633066613466653465303264393431623863656362363131623738
           3430373265613636666534346436643238336263333266383039
 # tailscale_state: absent
-tailscale_force_new_machine: true
+tailscale_force_new_machine: false
 hostname: "sravan-avmmini"
 # ts_auth_key: ""
 ts_auth_key: !vault |
