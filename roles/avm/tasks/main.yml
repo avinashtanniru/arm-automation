@@ -78,6 +78,14 @@
       ansible.builtin.command:
         cmd: mv /tmp/avm_htpasswd.bak "{{ avm_dir }}/.htpasswd"
       when: htpasswd_stat.stat.exists
+
+    - name: Copy .htpasswd-default to .htpasswd on initial install
+      ansible.builtin.copy:
+        src: "{{ avm_dir }}/.htpasswd-default"
+        dest: "{{ avm_dir }}/.htpasswd"
+        remote_src: yes
+        force: no
+      when: not htpasswd_stat.stat.exists
   when: >
     current_avm_version.rc != 0 or 
     avm_version not in current_avm_version.stdout
