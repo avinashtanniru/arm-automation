@@ -16,12 +16,15 @@ kvmd:
   hid:
     mouse:
 {% if ansible_os_family != 'Archlinux' %}
-      absolute: true
-{% else %}
-      absolute: false
-{% endif %}
+      absolute: {{ mouse_absolute_mode | lower }}
     mouse_alt:
       device: ""
+{% else %}
+      absolute: false
+    mouse_alt:
+      device: "absolute"
+      start: {{ mouse_absolute_mode | lower }}
+{% endif %}
 
 otg:
   manufacturer: "Dell Inc."
