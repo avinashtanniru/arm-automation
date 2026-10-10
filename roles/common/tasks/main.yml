@@ -7,3 +7,7 @@
 
 - name: Include SSH tasks
   include_tasks: ssh.yml
+
+- name: Include issue tasks
+  include_tasks: issue.yml
+

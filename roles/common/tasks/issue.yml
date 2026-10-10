@@ -1,0 +1,11 @@
+---
+- name: Configure /etc/issue
+  copy:
+    content: |
+      Welcome to AVM
+      \S \r (\l)
+      IP: \4
+    dest: /etc/issue
+    owner: root
+    group: root
+    mode: '0644'
