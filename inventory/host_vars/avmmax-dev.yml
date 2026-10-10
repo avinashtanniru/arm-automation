@@ -8,7 +8,7 @@ serial: !vault |
           3738356262626338300a623638353466383463666666386264323835643766623633363665633135
           66303035313863653836393937346662613130376465353465356239646536366365
 # tailscale_state: absent
-tailscale_force_new_machine: true
+tailscale_force_new_machine: false
 hostname: "avmmax-dev"
 # ts_auth_key: ""
 ts_auth_key: !vault |
